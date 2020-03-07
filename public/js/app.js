@@ -1,97 +1,118 @@
-$(document).ready(function() {
-  var totalVistas;
-  var elemeVista=4;
-  
-  var pageCurrent=1;
-  var imageID=0;
-  var btn="";
-  var datar=["https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885__340.jpg",
-  "https://cdn.pixabay.com/photo/2015/02/24/15/41/dog-647528__340.jpg",
-"https://www.bigstockphoto.com/images/homepage/module-6.jpg",
-"https://s.ftcdn.net/v2013/pics/all/curated/RKyaEDwp8J7JKeZWQPuOVWvkUjGQfpCx_cover_580.jpg",
-"https://static-cdn.123rf.com/images/v5/index-thumbnail/84170952-b.jpg"]
+$(document).ready(function () {
+  var pageImages = [];
+  var currentPage = 1;
+  var numResults = 0;
+  var totalPages = 0;
+
+
   $("#version").html("v0.14");
-  
-  $("#searchbutton").click( function (e) {
+
+  $("#searchbutton").click(function (e) {
     displayModal();
   });
-  
-  $("#searchfield").keydown( function (e) {
-    if(e.keyCode == 13) {
-      displayModal();
-    }	
-  });
-  
-  function displayModal() {
-    $(  "#myModal").modal('show');
 
+  $("#searchfield").keydown(function (e) {
+    if (e.keyCode == 13) {
+      displayModal();
+    }
+  });
+
+  function displayModal() {
+    var imagesUrl = [];
+    let search = ($("#searchfield").val()).split(" ");
+    $("#myModal").modal('show');
     $("#status").html("Searching...");
-    $("#dialogtitle").html("Search for: "+$("#searchfield").val());
+    $("#dialogtitle").html("Search for: " + $("#searchfield").val());
     $("#previous").hide();
     $("#next").hide();
-    $.getJSON('/search/' + $("#searchfield").val() , function(data) {
-      renderQueryResults(data);
-    });
-  }
-  
-  $("#next").click( function(data) {
-    pageCurrent=pageCurrent+1;
-    btn="next";
-    showImages(data);
 
-  });
-  
-  $("#previous").click( function(data) {
-    pageCurrent=pageCurrent-1;
-    btn="previous"
-    showImages(data);
-  
-  });
+    numResults = search.length;
+    totalPages = Math.ceil(numResults / 4);
 
-  function showImages(data){
-    if(btn.localeCompare("next")||btn.localeCompare(""))
-{
-    for(i=0;i<4;i++){
-      var img=document.createElement("img");
-     // img.src=data.results[imageID];
-     img.src=datar[imageID];
-      img.width="100";
-      img.height="100"
-      $("#photo".concat(i)).html(img);
-        imageID++;
-}
-}
-if(btn.localeCompare("previous")){
-  
-  for(i=0;i<4;i++){
-    imageID--;
-
-    var img=document.createElement("img");
-   // img.src=data.results[imageID];
-   img.src=datar[imageID];
-    img.width="100";
-    img.height="100"
-    $("#photo".concat(i)).html(img);
-}
-}
+    for (let i = 0; i < search.length; i++) {
+      $.getJSON('/search/' + search[i], function (data) {
+        renderQueryResults(data);
+      });
+    }
 
   }
 
+  $("#next").click(function (e) {
+    if (currentPage < totalPages) {
+      currentPage++;
+      renderImages(pageImages[currentPage - 1]);
+    }
+  });
+
+  $("#previous").click(function (e) {
+    if (currentPage > 1) {
+      currentPage--;
+      renderImages(pageImages[currentPage - 1]);
+    }
+
+  });
 
   function renderQueryResults(data) {
-    var totalElemen=data.num_results;
-  totalVistas=totalElemen/elemeVista;
-  if(totalElemen%elemeVista!=0)
-    totalVistas+1;
-   
-      showImages(data);
-
     if (data.error != undefined) {
-      $("#status").html("Error: "+data.error);
+      $("#status").html("Error: " + data.error);
     } else {
-      $("#status").html(""+data.num_results+" result(s)");
-        $("#next").show();
-        $("#previous").show();
-     }
-   }
+      showResults(data.results);
+    }
+  }
+
+  function showResults(results) {
+    imagesUrl.push(results);
+
+    if (imagesUrl.length == numResults) {
+      if ((imagesUrl.length % 4) != 0) {
+        let ix = 0;
+        let lx = 0;
+        for (let i = 0; i < totalPages; i++) {
+          if (i == totalPages - 1) {
+            lx = ix + (imagesUrl.length % 4);
+          } else {
+            lx += 4;
+          }
+
+          pageImages[i] = imagesUrl.slice(ix, lx);
+          ix = ix + 4;
+        }
+        renderImages(pageImages[0]);
+      } else
+        renderImages(imagesUrl);
+    }
+
+  }
+
+  function renderImages(images) {
+    //$("#status").html(""+images.length+" result(s)");
+    if (currentPage < totalPages) {
+      $("#next").show();
+    }
+    if (currentPage == totalPages) {
+      $("#next").hide();
+    }
+    if (currentPage != 1) {
+      $("#previous").show();
+    }
+    if (currentPage == 1) {
+      $("#previous").hide();
+    }
+
+    $("#status").html("" + numResults + " result(s) - Showing page " + currentPage + " of " + totalPages);
+
+    let img;
+    for (let i = 0; i < 4; i++) {
+      if (images[i]) {
+        img = document.createElement("img");
+        img.src = images[i];
+        img.width = 200;
+      } else {
+        img = "";
+      }
+      let photo = "#photo" + i;
+      $(photo).html(img);
+    }
+  }
+
 });
